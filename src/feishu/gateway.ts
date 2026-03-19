@@ -35,7 +35,10 @@ export async function startFeishuGateway(options: GatewayOptions): Promise<Feish
   // 创建 WebSocket 客户端连接到飞书
   const ws = new Lark.EventDispatcher({}) as any
 
-  // 注册事件处理器
+  // 先启动连接，这会初始化 Lark.im 模块
+  await (larkClient as any).startEventDispatcher(ws)
+
+  // 然后注册事件处理器（此时 Lark.im 已可用）
   ws.addEventListener((Lark.im as any).MessageReceive.v1, async (data: any) => {
     try {
       const event = data.detail.event
@@ -76,9 +79,6 @@ export async function startFeishuGateway(options: GatewayOptions): Promise<Feish
       })
     }
   })
-
-  // 启动连接
-  await (larkClient as any).startEventDispatcher(ws)
 
   log("info", "飞书 WebSocket 网关已启动")
 
