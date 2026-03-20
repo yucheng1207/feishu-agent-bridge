@@ -4,9 +4,18 @@
 
 **Cursor 飞书集成** — 通过飞书 WebSocket 长连接将飞书消息接入 Cursor Headless CLI。
 
+## 传输模式（`FEISHU_TRANSPORT` / `createFeishuService({ transport })`）
+
+| 值 | 说明 |
+|----|------|
+| `http`（默认） | 由宿主（如 Express）提供 Webhook；飞书选「发送到开发者服务器」，需公网/ngrok |
+| `ws` | `Lark.WSClient` 长连接；飞书选「使用长连接接收事件」，**无需**配置请求地址 |
+| `both` | 同时启用 WS + HTTP；请勿在飞书对同一事件重复订阅，否则依赖包内 message_id 去重 |
+
 ## 特性
 
-- 🚀 **WebSocket 长连接** — 实时接收飞书消息，无需 Webhook 配置
+- 🚀 **WebSocket 长连接** — `transport: ws` 时实时收消息，无需公网 Webhook
+- 🌐 **HTTP Webhook** — `transport: http` 时由宿主提供 POST 回调
 - 🤖 **多媒体支持** — 图片、文件、音频、富文本消息自动处理
 - 👥 **智能群聊** — 仅 @提及时回复，其他消息静默监听作为上下文
 - 💬 **流式响应** — 支持实时更新消息（流式输出）
@@ -47,7 +56,9 @@ npm install cursor-feishu
 
 1. **添加机器人能力**
 2. **事件订阅** — 添加 `im.message.receive_v1` 和 `im.chat.member.bot.added_v1`
-3. **订阅方式** — 选择「使用长连接接收事件/回调」
+3. **订阅方式**（与 `FEISHU_TRANSPORT` 一致）  
+   - 使用 **`ws`**：选「**使用长连接接收事件**」  
+   - 使用 **`http`**：选「**发送到开发者服务器**」并填写你的 Webhook URL  
 4. **权限** — 开通 `im:message`、`im:message:send_as_bot`、`im:chat`
 5. **发布应用**
 
@@ -57,6 +68,7 @@ npm install cursor-feishu
 import { createFeishuService } from 'cursor-feishu'
 
 const service = await createFeishuService({
+  transport: process.env.FEISHU_TRANSPORT === 'ws' ? 'ws' : 'http', // 或 'both'
   onMessage: async (msgCtx) => {
     console.log(`收到消息: ${msgCtx.content}`)
     // 调用 cursor-agent 处理消息
@@ -84,6 +96,10 @@ await service.run()
 interface FeishuServiceOptions {
   /** 飞书配置，可从 ~/.config/cursor/plugins/feishu.json 自动加载 */
   config?: Partial<ResolvedConfig>
+  appId?: string
+  appSecret?: string
+  /** `http` | `ws` | `both`，默认读 `FEISHU_TRANSPORT` */
+  transport?: 'http' | 'ws' | 'both'
   /** 消息处理回调 */
   onMessage?: (msgCtx: FeishuMessageContext) => Promise<void>
   /** Bot 入群回调 */
@@ -99,6 +115,7 @@ interface FeishuServiceOptions {
 
 ```typescript
 interface FeishuService {
+  readonly transport: 'http' | 'ws' | 'both'
   run: () => Promise<void>           // 启动并运行服务
   shutdown: () => Promise<void>      // 关闭服务
   getSender: () => FeishuSender      // 获取消息发送器
