@@ -1,6 +1,6 @@
 # 发布到 npm
 
-1. 确保版本号已更新（`package.json` 的 `version`，当前双模式为 **1.1.0**）。
+1. 确保版本号已更新（`package.json` 的 `version`）。
 2. 构建与检查：
    ```bash
    npm run build && npm run typecheck
@@ -14,6 +14,8 @@
    npm publish
    ```
 
-发布后，在 **cursor-agent** 目录执行 `npm install` 即可解析 `cursor-feishu@^1.1.0`。
+发布后，在 **cursor-agent**（或其它依赖方）目录执行 `npm install`，确保 `package.json` 中为 `feishu-agent-bridge` 的 semver（如 `^1.2.0`），以刷新 `package-lock.json` 中的 registry `resolved` 与 `integrity`。
 
-若 `cursor-agent` 的 `npm install` 报 `No matching version for cursor-feishu@^1.1.0`，说明尚未发布成功，请先完成步骤 4。
+源码仓库：<https://github.com/yucheng1207/feishu-agent-bridge>
+
+若 `npm install` 报 **No matching version for feishu-agent-bridge**，说明尚未发布成功，请先完成步骤 4。

@@ -1,9 +1,9 @@
 /**
- * Cursor 飞书集成主模块
+ * 飞书 / Lark 与任意 Agent 的桥接模块（不绑定特定 CLI）
  *
  * 使用方式：
  * ```typescript
- * import { createFeishuService } from 'cursor-feishu'
+ * import { createFeishuService } from 'feishu-agent-bridge'
  *
  * const service = await createFeishuService({
  *   config: { appId: '...', appSecret: '...' },
@@ -31,7 +31,7 @@ import {
 } from "./feishu/gateway-ws.js"
 import { createSender, type FeishuSender } from "./feishu/sender.js"
 
-const SERVICE_NAME = "cursor-feishu"
+const SERVICE_NAME = "feishu-agent-bridge"
 const LOG_PREFIX = "[feishu]"
 const isDebug = !!process.env.FEISHU_DEBUG
 
@@ -45,8 +45,14 @@ function parseTransport(raw: string | undefined): FeishuTransport {
   return "http"
 }
 
+/** 默认配置文件查找顺序（存在即用）：通用路径 → 兼容旧版 Cursor 插件路径 */
+export const DEFAULT_FEISHU_CONFIG_PATHS = [
+  () => join(homedir(), ".config", "feishu-agent-bridge", "feishu.json"),
+  () => join(homedir(), ".config", "cursor", "plugins", "feishu.json"),
+] as const
+
 export interface FeishuServiceOptions {
-  /** 飞书配置，可从 ~/.config/cursor/plugins/feishu.json 自动加载 */
+  /** 飞书配置；未传 appId/appSecret 时按 DEFAULT_FEISHU_CONFIG_PATHS 查找 JSON 文件 */
   config?: Partial<ResolvedConfig>
   /** 与 config 二选一：直接传 appId / appSecret */
   appId?: string
@@ -82,7 +88,7 @@ export interface FeishuService {
 }
 
 /**
- * 创建 Cursor 飞书集成服务
+ * 创建飞书 Agent 桥接服务（在 onMessage 中接入 Cursor / Claude / 自建 API 等）
  */
 export async function createFeishuService(options: FeishuServiceOptions): Promise<FeishuService> {
   const {
@@ -229,11 +235,20 @@ async function loadConfig(
     }
   }
 
-  // 从配置文件加载
-  const configPath = join(homedir(), ".config", "cursor", "plugins", "feishu.json")
-  if (!existsSync(configPath)) {
+  // 从配置文件加载（新路径优先，兼容 ~/.config/cursor/plugins/feishu.json）
+  let configPath: string | null = null
+  for (const getPath of DEFAULT_FEISHU_CONFIG_PATHS) {
+    const p = getPath()
+    if (existsSync(p)) {
+      configPath = p
+      break
+    }
+  }
+  if (!configPath) {
+    const primary = DEFAULT_FEISHU_CONFIG_PATHS[0]()
+    const legacy = DEFAULT_FEISHU_CONFIG_PATHS[1]()
     throw new Error(
-      `缺少飞书配置文件：请创建 ${configPath}，内容为 {"appId":"cli_xxx","appSecret":"xxx"}`,
+      `缺少飞书配置文件：请创建 ${primary}（推荐），或沿用兼容路径 ${legacy}，内容为 {"appId":"cli_xxx","appSecret":"xxx"}；也可在代码中传入 appId / appSecret 或完整 config`,
     )
   }
 

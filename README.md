@@ -1,8 +1,18 @@
-# cursor-feishu
+# feishu-agent-bridge
 
-[![npm](https://img.shields.io/npm/v/cursor-feishu)](https://www.npmjs.com/package/cursor-feishu)
+[![npm](https://img.shields.io/npm/v/feishu-agent-bridge)](https://www.npmjs.com/package/feishu-agent-bridge)
 
-**Cursor 飞书集成** — 通过飞书 WebSocket 长连接将飞书消息接入 Cursor Headless CLI。
+**通用飞书 / Lark ↔ Agent 桥接** — 用 Node.js 接收飞书消息（WebSocket 或 HTTP Webhook），在 `onMessage` 里自行调用 **任意后端**：Cursor Headless、Claude Code CLI、OpenAI API、内部微服务等。**不依赖**特定 Agent 产品。
+
+## 与任意 Agent 对接
+
+在 `onMessage` 中调用你的进程或 HTTP 接口即可，例如：
+
+- `spawn('cursor-agent', …)` / Cursor Headless
+- `spawn('claude', …)` / 容器内的 Claude Code
+- `fetch('https://your-llm-gateway/…')`
+
+本包只负责 **飞书连接、鉴权、消息解析与发送**。
 
 ## 传输模式（`FEISHU_TRANSPORT` / `createFeishuService({ transport })`）
 
@@ -27,12 +37,12 @@
 ### 1. 安装依赖
 
 ```bash
-npm install cursor-feishu
+npm install feishu-agent-bridge
 ```
 
 ### 2. 创建飞书配置文件
 
-创建 `~/.config/cursor/plugins/feishu.json`：
+推荐创建 `~/.config/feishu-agent-bridge/feishu.json`（通用路径）。若你已有 Cursor 插件配置，也可继续使用兼容路径 `~/.config/cursor/plugins/feishu.json`（二者择一即可，**优先读取通用路径**）。
 
 ```json
 {
@@ -65,14 +75,14 @@ npm install cursor-feishu
 ### 4. 使用
 
 ```typescript
-import { createFeishuService } from 'cursor-feishu'
+import { createFeishuService } from 'feishu-agent-bridge'
 
 const service = await createFeishuService({
   transport: process.env.FEISHU_TRANSPORT === 'ws' ? 'ws' : 'http', // 或 'both'
   onMessage: async (msgCtx) => {
     console.log(`收到消息: ${msgCtx.content}`)
-    // 调用 cursor-agent 处理消息
-    // const result = await execCursor(msgCtx.content)
+    // 在此调用你的 Agent（Cursor / Claude / 自建 API 等）
+    // const result = await runYourAgent(msgCtx.content)
     // 发送结果回飞书
     // await service.getSender().sendText(msgCtx.chatId, result)
   },
@@ -94,7 +104,7 @@ await service.run()
 
 ```typescript
 interface FeishuServiceOptions {
-  /** 飞书配置，可从 ~/.config/cursor/plugins/feishu.json 自动加载 */
+  /** 飞书配置；未传凭证时按 ~/.config/feishu-agent-bridge/feishu.json → ~/.config/cursor/plugins/feishu.json 顺序查找 */
   config?: Partial<ResolvedConfig>
   appId?: string
   appSecret?: string
@@ -161,7 +171,7 @@ class FeishuSender {
 
 ## 配置说明
 
-完整配置字段（`~/.config/cursor/plugins/feishu.json`）：
+完整配置字段（`~/.config/feishu-agent-bridge/feishu.json` 或兼容路径 `~/.config/cursor/plugins/feishu.json`）：
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -244,18 +254,22 @@ src/
 HTTP_PROXY=http://proxy:8080 npm start
 ```
 
-### Q: 如何与 cursor-agent 容器集成？
+### Q: 如何与 cursor-agent / Claude Code 容器集成？
 
-在 Dockerfile 中安装 cursor-feishu，然后启动一个长期运行的 Node.js 服务来处理飞书消息，再调用 cursor-agent 容器执行任务。
+在镜像中 `npm install feishu-agent-bridge`，用长期运行的 Node 服务收飞书消息，在 `onMessage` 里 `exec`/`spawn` 你的 CLI 或调用侧车容器。
 
-示例见 `cursor-agent` 仓库的 `docs/feishu/` 目录。
+`cursor-agent` 示例见仓库 `docs/feishu/`；Claude Code 等仅需替换 `onMessage` 内的调用命令。
 
 ## 许可证
 
 MIT
 
+## 文档
+
+- [RELEASING.md](./RELEASING.md) — npm 发布流程
+
 ## 相关项目
 
-- [opencode-feishu](https://github.com/NeverMore93/opencode-feishu) — OpenCode 飞书插件（原型）
-- [cursor-agent](https://github.com/NeverMore93/cursor-agent) — Cursor Headless CLI 容器化解决方案
+- [opencode-feishu](https://github.com/yucheng1207/opencode-feishu) — OpenCode 飞书插件（原型）
+- [cursor-agent](https://github.com/yucheng1207/cursor-agent) — Cursor Headless CLI 容器化方案（常用宿主之一）
 - [Feishu SDK](https://open.feishu.cn/document) — 飞书官方文档

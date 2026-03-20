@@ -1,7 +1,7 @@
 {
-  "name": "cursor-feishu",
-  "version": "1.1.0",
-  "description": "Cursor 飞书集成 — 通过飞书 WebSocket 长连接与 Cursor Headless CLI 交互",
+  "name": "feishu-agent-bridge",
+  "version": "1.2.0",
+  "description": "飞书/Lark 与任意 AI Agent 的 Node.js 桥接（WebSocket / HTTP Webhook、消息收发）；可与 Cursor Headless、Claude Code、自建服务等集成",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,12 +27,12 @@
     "prepublishOnly": "npm run build && npm run typecheck",
     "release": "bumpp"
   },
-  "author": "NeverMore93",
+  "author": "yucheng1207",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NeverMore93/cursor-feishu"
+    "url": "https://github.com/yucheng1207/feishu-agent-bridge"
   },
-  "homepage": "https://github.com/NeverMore93/cursor-feishu#readme",
+  "homepage": "https://github.com/yucheng1207/feishu-agent-bridge#readme",
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.56.1",
     "https-proxy-agent": "^7.0.6",
@@ -48,14 +48,17 @@
     "node": ">=20.0.0"
   },
   "keywords": [
-    "cursor",
-    "cursor-cli",
     "feishu",
     "lark",
     "飞书",
     "飞书机器人",
+    "agent",
     "ai",
-    "chatbot"
+    "chatbot",
+    "websocket",
+    "webhook",
+    "cursor",
+    "claude"
   ],
   "license": "MIT"
 }

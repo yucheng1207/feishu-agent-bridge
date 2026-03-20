@@ -21,7 +21,7 @@ export interface FeishuMessageContext {
 }
 
 /**
- * 插件配置（从 ~/.config/cursor/plugins/feishu.json 读取）
+ * 飞书桥接配置（默认从 ~/.config/feishu-agent-bridge/feishu.json 读取，兼容 ~/.config/cursor/plugins/feishu.json）
  */
 export interface FeishuPluginConfig {
   appId: string
