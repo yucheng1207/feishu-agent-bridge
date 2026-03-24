@@ -20,6 +20,7 @@
 import { readFileSync, existsSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
+import { createRequire } from "node:module"
 import * as Lark from "@larksuiteoapi/node-sdk"
 import { z } from "zod"
 import type { ResolvedConfig, LogFn, FeishuMessageContext, GatewayHandlers } from "./types.js"
@@ -31,20 +32,33 @@ import {
 } from "./feishu/gateway-ws.js"
 import { createSender, type FeishuSender } from "./feishu/sender.js"
 
+const require = createRequire(import.meta.url)
+
 const SERVICE_NAME = "feishu-agent-bridge"
 const LOG_PREFIX = "[feishu]"
 const isDebug = !!process.env.FEISHU_DEBUG
 
-/** 创建支持代理的 HTTP 实例包装器（如果有 HTTPS 代理配置则使用，否则使用原生实例） */
+/** 创建支持代理的 HTTP 实例包装器（如果有代理配置则使用，否则使用原生实例） */
 function createProxyAwareHttpInstance(): Lark.HttpInstance {
+  const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy
   const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy
 
   // 无代理配置时，直接返回默认实例（完全兼容以前的行为）
-  if (!httpsProxy) {
+  if (!httpProxy && !httpsProxy) {
     return Lark.defaultHttpInstance
   }
 
+  let httpAgent: any = undefined
   let httpsAgent: any = undefined
+
+  try {
+    if (httpProxy) {
+      const { HttpProxyAgent: HttpProxyAgentClass } = require("http-proxy-agent")
+      httpAgent = new HttpProxyAgentClass(httpProxy)
+    }
+  } catch (err: any) {
+    console.warn(`[feishu] 无法加载 http-proxy-agent: ${err.message}`)
+  }
 
   try {
     if (httpsProxy) {
@@ -55,30 +69,32 @@ function createProxyAwareHttpInstance(): Lark.HttpInstance {
     console.warn(`[feishu] 无法加载 https-proxy-agent: ${err.message}`)
   }
 
-  if (httpsAgent) {
-    console.log(`[feishu] 配置 HTTPS 代理: ${httpsProxy}`)
+  if (httpAgent || httpsAgent) {
+    console.log(
+      `[feishu] 配置代理:${httpProxy ? ` HTTP=${httpProxy}` : ""}${httpsAgent ? ` HTTPS=${httpsProxy}` : ""}`
+    )
   }
 
-  // 返回一个包装器，将 httpsAgent 注入到请求中
+  // 返回一个包装器，将 agents 注入到请求中
   return {
     request: async (opts: any) => {
-      const config = { ...opts, httpAgent: httpsAgent, httpsAgent }
+      const config = { ...opts, httpAgent, httpsAgent }
       return Lark.defaultHttpInstance.request(config)
     },
     get: async (url: string, opts?: any) =>
-      Lark.defaultHttpInstance.get(url, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.get(url, { ...opts, httpAgent, httpsAgent }),
     post: async (url: string, data?: any, opts?: any) =>
-      Lark.defaultHttpInstance.post(url, data, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.post(url, data, { ...opts, httpAgent, httpsAgent }),
     put: async (url: string, data?: any, opts?: any) =>
-      Lark.defaultHttpInstance.put(url, data, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.put(url, data, { ...opts, httpAgent, httpsAgent }),
     patch: async (url: string, data?: any, opts?: any) =>
-      Lark.defaultHttpInstance.patch(url, data, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.patch(url, data, { ...opts, httpAgent, httpsAgent }),
     delete: async (url: string, opts?: any) =>
-      Lark.defaultHttpInstance.delete(url, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.delete(url, { ...opts, httpAgent, httpsAgent }),
     head: async (url: string, opts?: any) =>
-      Lark.defaultHttpInstance.head(url, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.head(url, { ...opts, httpAgent, httpsAgent }),
     options: async (url: string, opts?: any) =>
-      Lark.defaultHttpInstance.options(url, { ...opts, httpAgent: httpsAgent, httpsAgent }),
+      Lark.defaultHttpInstance.options(url, { ...opts, httpAgent, httpsAgent }),
   }
 }
 
