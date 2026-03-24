@@ -179,13 +179,16 @@ export async function createFeishuService(options: FeishuServiceOptions): Promis
 
   const transport: FeishuTransport = transportOpt ?? parseTransport(process.env.FEISHU_TRANSPORT)
 
+  // 与 WSClient 共用同一 HTTP 实例，避免长连接拉取 endpoint 时走默认 axios（无代理）导致超时
+  const httpInstance = createProxyAwareHttpInstance()
+
   // 创建 Lark 客户端（支持代理）
   const larkClient = new Lark.Client({
     appId: config.appId,
     appSecret: config.appSecret,
     domain: Lark.Domain.Feishu,
     appType: Lark.AppType.SelfBuild,
-    httpInstance: createProxyAwareHttpInstance(),
+    httpInstance,
   })
 
   // 获取 bot open_id
@@ -208,6 +211,7 @@ export async function createFeishuService(options: FeishuServiceOptions): Promis
     wsGateway = startFeishuWebSocketGateway({
       config,
       larkClient,
+      httpInstance,
       botOpenId,
       handlers,
       log,

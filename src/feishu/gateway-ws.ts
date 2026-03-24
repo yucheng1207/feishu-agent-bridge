@@ -13,6 +13,11 @@ export interface FeishuWebSocketGatewayOptions {
   config: ResolvedConfig
   /** 复用 token 的 Client（WS 仍用 appId/appSecret 建连，此参数预留与 sender 一致） */
   larkClient: InstanceType<typeof Lark.Client>
+  /**
+   * 与 Lark.Client 相同的 HTTP 实例。WSClient 拉取 wss 地址时会 POST open.feishu.cn/callback/ws/endpoint；
+   * 若缺省则使用 SDK 默认 axios（无代理），在仅允许走公司代理的环境会 15s 超时。
+   */
+  httpInstance?: Lark.HttpInstance
   botOpenId: string
   handlers: GatewayHandlers
   log: LogFn
@@ -67,7 +72,7 @@ function computeShouldReply(
 export function startFeishuWebSocketGateway(
   options: FeishuWebSocketGatewayOptions,
 ): FeishuWebSocketGatewayResult {
-  const { config, botOpenId, handlers, log } = options
+  const { config, botOpenId, handlers, log, httpInstance } = options
   const { appId, appSecret } = config
 
   const proxyUrl =
@@ -182,6 +187,7 @@ export function startFeishuWebSocketGateway(
     appId,
     appSecret,
     domain: Lark.Domain.Feishu,
+    ...(httpInstance ? { httpInstance } : {}),
     ...(wsAgent ? { agent: wsAgent } : {}),
     loggerLevel: logLevelMap[config.logLevel] ?? Lark.LoggerLevel.info,
     logger: {

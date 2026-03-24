@@ -1,6 +1,6 @@
 {
   "name": "feishu-agent-bridge",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "飞书/Lark 与任意 AI Agent 的 Node.js 桥接（WebSocket / HTTP Webhook、消息收发）；可与 Cursor Headless、Claude Code、自建服务等集成",
   "type": "module",
   "main": "dist/index.js",
