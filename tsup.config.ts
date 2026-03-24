@@ -13,6 +13,7 @@ export default defineConfig({
   clean: true,
   external: [
     "@larksuiteoapi/node-sdk",
+    "http-proxy-agent",
     "https-proxy-agent",
     "zod",
   ],

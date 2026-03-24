@@ -3,6 +3,7 @@
  * 飞书开放平台需选择「使用长连接接收事件」，无需公网 Webhook URL。
  */
 import * as Lark from "@larksuiteoapi/node-sdk"
+import { HttpProxyAgent } from "http-proxy-agent"
 import { HttpsProxyAgent } from "https-proxy-agent"
 import type { Agent } from "node:https"
 import type { ResolvedConfig, FeishuMessageContext, LogFn, GatewayHandlers } from "../types.js"
@@ -74,8 +75,24 @@ export function startFeishuWebSocketGateway(
 
   let wsAgent: Agent | undefined
   if (proxyUrl) {
+    // 创建 HTTPS 代理 Agent（用于 wss:// 连接）
     wsAgent = new HttpsProxyAgent(proxyUrl)
     log("info", "飞书 WS 已启用代理", { proxy: proxyUrl })
+
+    // 同时配置全局代理 Agent，支持 ws 库的自动检测和多种连接方式
+    // 设置全局 httpsAgent，用于 HTTPS/WSS 连接
+    if (!(globalThis as any).httpsAgent) {
+      ;(globalThis as any).httpsAgent = wsAgent
+    }
+
+    // 如果是 HTTP 代理（而不是 HTTPS 代理），也创建 HTTP Agent 用于 ws:// 连接
+    if (proxyUrl.startsWith("http://")) {
+      const httpAgent = new HttpProxyAgent(proxyUrl)
+      if (!(globalThis as any).httpAgent) {
+        ;(globalThis as any).httpAgent = httpAgent
+      }
+      log("info", "飞书 WS HTTP Agent 已配置", { proxy: proxyUrl })
+    }
   }
 
   const dispatcher = new Lark.EventDispatcher({}).register({
